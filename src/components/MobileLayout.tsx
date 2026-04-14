@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Play, Settings, Menu, Plus, Terminal, Layers, History } from 'lucide-react';
 
 import { useFlowStore } from '../store/flowStore';
-import { getTranslation, Language } from '../lib/i18n';
+import { getTranslation } from '../lib/i18n';
+import type { Language } from '../lib/i18n';
 import { ExecutionLogsSheet } from './ExecutionLogsSheet';
 import { CredentialsSheet } from './CredentialsSheet';
 import { FlowListSheet } from './FlowListSheet';
