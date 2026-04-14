@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  
+  --color-background: #0f172a;
+  --color-foreground: #f8fafc;
+  
+  --color-card: #1e293b;
+  --color-card-foreground: #f8fafc;
+  
+  --color-border: #334155;
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+}
+
+@layer base {
+  :root {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    touch-action: pan-x pan-y;
+  }
+  
+  body {
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+}
+
+/* Glassmorphism utility for mobile UI */
+.glass {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
