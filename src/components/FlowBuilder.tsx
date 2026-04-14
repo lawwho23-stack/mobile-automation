@@ -4,7 +4,6 @@ import type { FlowNode } from '../store/flowStore';
 import { FlowCard } from './FlowCard';
 import { AddNodeSheet } from './AddNodeSheet';
 import { ConfigNodeSheet } from './ConfigNodeSheet';
-import { ExecutionLogsSheet } from './ExecutionLogsSheet';
 import { MobileLayout } from './MobileLayout';
 import { Zap, Bot } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -14,7 +13,6 @@ import { getTranslation } from '../lib/i18n';
 export function FlowBuilder() {
   const { nodes, removeNode, addNode, updateNodeConfig, isSimulating, simulationStep, nextSimulationStep, stopSimulation } = useFlowStore();
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
-  const [isLogsSheetOpen, setIsLogsSheetOpen] = useState(false);
   const [editingNode, setEditingNode] = useState<FlowNode | null>(null);
 
   // Hardcoded to 'my' for now
@@ -32,7 +30,6 @@ export function FlowBuilder() {
         // End of flow
         timer = setTimeout(() => {
           stopSimulation();
-          setIsLogsSheetOpen(true);
         }, 1500);
       }
     }
@@ -45,10 +42,7 @@ export function FlowBuilder() {
   };
 
   return (
-    <MobileLayout 
-      onAddClick={() => setIsAddSheetOpen(true)}
-      onLogsClick={() => setIsLogsSheetOpen(true)}
-    >
+    <MobileLayout onAddClick={() => setIsAddSheetOpen(true)}>
       <div className="flex flex-col items-center justify-start min-h-full py-4 pb-12">
         {nodes.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-10">
@@ -105,21 +99,16 @@ export function FlowBuilder() {
         )}
       </div>
 
-      <AddNodeSheet 
-        isOpen={isAddSheetOpen} 
-        onClose={() => setIsAddSheetOpen(false)} 
+      <AddNodeSheet
+        isOpen={isAddSheetOpen}
+        onClose={() => setIsAddSheetOpen(false)}
         onSelectNode={handleAddNode}
       />
-      
-      <ConfigNodeSheet 
+
+      <ConfigNodeSheet
         node={editingNode}
         onClose={() => setEditingNode(null)}
         onSave={updateNodeConfig}
-      />
-      
-      <ExecutionLogsSheet 
-        isOpen={isLogsSheetOpen}
-        onClose={() => setIsLogsSheetOpen(false)}
       />
     </MobileLayout>
   );

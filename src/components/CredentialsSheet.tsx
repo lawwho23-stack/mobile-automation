@@ -58,7 +58,11 @@ export function CredentialsSheet({ isOpen, onClose }: CredentialsSheetProps) {
             
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-950/30">
               <button 
-                onClick={() => window.open('http://localhost:3001/auth/google', '_blank')}
+                onClick={() => {
+                  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+                  const authUrl = apiBase.replace('/api', '/auth/google');
+                  window.open(authUrl, '_blank');
+                }}
                 className="w-full bg-white text-slate-900 h-14 rounded-2xl flex items-center justify-center gap-3 font-semibold shadow-xl active:scale-95 transition-all mb-4"
               >
                 <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="Google" />

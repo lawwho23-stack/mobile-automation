@@ -12,7 +12,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+const allowedOrigins: (string | RegExp)[] = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'capacitor://localhost',
+  'https://localhost',
+  /^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/,  // LAN access from physical device
+];
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 // Helper for variable substitution
@@ -26,6 +37,27 @@ function resolveVariables(text: string, data: any) {
     }
     return current !== undefined ? String(current) : match;
   });
+}
+
+// Telegram Webhook Sync
+async function syncTelegramWebhook(flow: any) {
+  const triggerNode = (flow.nodes as any[]).find((n: any) => n.type === 'trigger_telegram');
+  if (triggerNode && triggerNode.config?.token) {
+    const token = triggerNode.config.token;
+    const webhookUrl = `${process.env.BASE_URL || 'http://localhost:3001'}/webhook/telegram/${flow.id}`;
+    
+    try {
+      if (flow.enabled) {
+        console.log(`📡 Setting Telegram Webhook for flow "${flow.name}" to: ${webhookUrl}`);
+        await axios.post(`https://api.telegram.org/bot${token}/setWebhook`, { url: webhookUrl });
+      } else {
+        console.log(`🔌 Deleting Telegram Webhook for flow "${flow.name}"`);
+        await axios.post(`https://api.telegram.org/bot${token}/deleteWebhook`);
+      }
+    } catch (err: any) {
+      console.error(`❌ Telegram Webhook Sync failed for flow "${flow.name}":`, err.message);
+    }
+  }
 }
 
 // Execution Engine
@@ -46,6 +78,14 @@ async function executeFlow(flow: any, initialContext: any = {}) {
   try {
     for (const node of flow.nodes) {
       if (node.type.startsWith('trigger')) {
+        // Map top-level initialContext into per-node context so {{nodeId.field}} variables resolve
+        if (node.type === 'trigger_telegram') {
+          log.context[node.id] = initialContext.telegram || {};
+        } else if (node.type === 'trigger_sheets') {
+          log.context[node.id] = initialContext.sheets || {};
+        } else if (node.type === 'trigger_schedule') {
+          log.context[node.id] = { timestamp: new Date().toISOString() };
+        }
         log.steps.push({ nodeId: node.id, nodeName: node.name, status: 'success', timestamp: new Date().toISOString() });
         continue;
       }
@@ -111,6 +151,78 @@ async function executeFlow(flow: any, initialContext: any = {}) {
             const content = response.choices[0]?.message?.content;
             log.context[node.id] = { output: content };
             nodeLog.output = content;
+            break;
+          }
+
+          case 'action_gmail': {
+            const { to, subject, body, credentialId } = node.config;
+            const resolvedTo = resolveVariables(to || '', log.context);
+            const resolvedSubject = resolveVariables(subject || '', log.context);
+            const resolvedBody = resolveVariables(body || '', log.context);
+
+            if (credentialId) {
+              const creds = await CredentialModel.all();
+              const cred = (creds as any[]).find(c => c.id === credentialId);
+              if (cred && cred.provider === 'google') {
+                const gmailOauth = new google.auth.OAuth2(
+                  process.env.GOOGLE_CLIENT_ID,
+                  process.env.GOOGLE_CLIENT_SECRET,
+                  (process.env.BASE_URL || 'http://localhost:3001') + '/auth/google/callback'
+                );
+                gmailOauth.setCredentials(cred.meta);
+
+                const gmail = google.gmail({ version: 'v1', auth: gmailOauth });
+                const raw = Buffer.from(
+                  `To: ${resolvedTo}\r\nSubject: ${resolvedSubject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${resolvedBody}`
+                ).toString('base64url');
+                await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
+                log.context[node.id] = { success: true };
+                nodeLog.output = `Email sent to ${resolvedTo}`;
+              } else {
+                throw new Error("Google account မချိတ်ဆက်ထားပါ");
+              }
+            } else {
+              log.context[node.id] = { success: true };
+              nodeLog.output = `Simulation: Email to ${resolvedTo} — ${resolvedSubject}`;
+            }
+            break;
+          }
+
+          case 'action_calendar': {
+            const { summary, description, startTime, endTime, credentialId } = node.config;
+            const resolvedSummary = resolveVariables(summary || '', log.context);
+            const resolvedDescription = resolveVariables(description || '', log.context);
+
+            if (credentialId) {
+              const creds = await CredentialModel.all();
+              const cred = (creds as any[]).find(c => c.id === credentialId);
+              if (cred && cred.provider === 'google') {
+                const calOauth = new google.auth.OAuth2(
+                  process.env.GOOGLE_CLIENT_ID,
+                  process.env.GOOGLE_CLIENT_SECRET,
+                  (process.env.BASE_URL || 'http://localhost:3001') + '/auth/google/callback'
+                );
+                calOauth.setCredentials(cred.meta);
+
+                const calendar = google.calendar({ version: 'v3', auth: calOauth });
+                const event = await calendar.events.insert({
+                  calendarId: 'primary',
+                  requestBody: {
+                    summary: resolvedSummary,
+                    description: resolvedDescription,
+                    start: { dateTime: startTime ? new Date(startTime).toISOString() : new Date().toISOString() },
+                    end: { dateTime: endTime ? new Date(endTime).toISOString() : new Date(Date.now() + 3600000).toISOString() },
+                  },
+                });
+                log.context[node.id] = { success: true, eventId: event.data.id };
+                nodeLog.output = `Event created: ${resolvedSummary} (${event.data.htmlLink})`;
+              } else {
+                throw new Error("Google account မချိတ်ဆက်ထားပါ");
+              }
+            } else {
+              log.context[node.id] = { success: true };
+              nodeLog.output = `Simulation: Calendar event "${resolvedSummary}"`;
+            }
             break;
           }
 
@@ -210,10 +322,13 @@ app.post('/webhook/telegram/:flowId', async (req, res) => {
 app.get('/api/flows', async (req, res) => res.json(await FlowModel.all()));
 app.post('/api/flows', async (req, res) => {
   const flow = await FlowModel.create(req.body);
+  await syncTelegramWebhook(flow);
+  await upsertSchedule(flow);
   res.json(flow);
 });
 app.delete('/api/flows/:id', async (req, res) => {
   await FlowModel.delete(req.params.id);
+  removeSchedule(req.params.id);
   res.json({ success: true });
 });
 
@@ -221,8 +336,12 @@ app.post('/api/flows/:id/toggle', async (req, res) => {
   const { id } = req.params;
   const flow = await FlowModel.findById(id);
   if (flow) {
-    await FlowModel.toggleEnabled(id, !flow.enabled);
-    res.json({ success: true, enabled: !flow.enabled });
+    const newStatus = !flow.enabled;
+    await FlowModel.toggleEnabled(id, newStatus);
+    const updatedFlow = { ...flow, enabled: newStatus };
+    await syncTelegramWebhook(updatedFlow);
+    await upsertSchedule(updatedFlow);
+    res.json({ success: true, enabled: newStatus });
   } else {
     res.status(404).json({ error: "Flow not found" });
   }
@@ -240,7 +359,11 @@ const oauth2Client = new google.auth.OAuth2(
 app.get('/auth/google', (req, res) => {
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/spreadsheets'],
+    scope: [
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/gmail.send',
+      'https://www.googleapis.com/auth/calendar.events',
+    ],
     prompt: 'consent'
   });
   res.redirect(url);
@@ -252,7 +375,7 @@ app.get('/auth/google/callback', async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code as string);
     // Create credential
     await CredentialModel.create({
-      name: 'Google Sheets (OAuth)',
+      name: 'Google Account (OAuth)',
       provider: 'google',
       apiKey: tokens.refresh_token || '',
       meta: tokens
@@ -273,22 +396,91 @@ app.delete('/api/credentials/:id', async (req, res) => {
 // Initialize Schedules
 const activeCrons = new Map();
 
+async function upsertSchedule(flow: any) {
+  // Remove existing if any
+  if (activeCrons.has(flow.id)) {
+    activeCrons.get(flow.id).stop();
+    activeCrons.delete(flow.id);
+  }
+
+  const scheduleTrigger = (flow.nodes as any[]).find((n: any) => n.type === 'trigger_schedule');
+  if (scheduleTrigger && scheduleTrigger.config.cron && flow.enabled) {
+    console.log(`⏰ Scheduling flow: ${flow.name} (${scheduleTrigger.config.cron})`);
+    const task = cron.schedule(scheduleTrigger.config.cron, () => {
+      console.log(`Running scheduled flow: ${flow.name}`);
+      executeFlow(flow, { trigger: 'schedule' });
+    });
+    activeCrons.set(flow.id, task);
+    return;
+  }
+
+  // Google Sheets polling trigger — check every 5 minutes for new rows
+  const sheetsTrigger = (flow.nodes as any[]).find((n: any) => n.type === 'trigger_sheets');
+  if (sheetsTrigger && sheetsTrigger.config.sheetId && sheetsTrigger.config.credentialId && flow.enabled) {
+    console.log(`📊 Setting up Sheets polling for flow: ${flow.name}`);
+    let lastRowCount: number | null = null;
+
+    const task = cron.schedule('*/5 * * * *', async () => {
+      try {
+        const creds = await CredentialModel.all();
+        const cred = (creds as any[]).find(c => c.id === sheetsTrigger.config.credentialId);
+        if (!cred || cred.provider !== 'google') return;
+
+        const sheetsOauth = new google.auth.OAuth2(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET,
+          (process.env.BASE_URL || 'http://localhost:3001') + '/auth/google/callback'
+        );
+        sheetsOauth.setCredentials(cred.meta);
+        const sheets = google.sheets({ version: 'v4', auth: sheetsOauth });
+        const res = await sheets.spreadsheets.values.get({
+          spreadsheetId: sheetsTrigger.config.sheetId,
+          range: sheetsTrigger.config.range || 'Sheet1!A:A',
+        });
+        const rows = res.data.values || [];
+        if (lastRowCount === null) {
+          lastRowCount = rows.length;
+          return;
+        }
+        if (rows.length > lastRowCount) {
+          const newRows = rows.slice(lastRowCount);
+          lastRowCount = rows.length;
+          console.log(`📊 New rows detected in Sheets trigger for flow: ${flow.name}`);
+          executeFlow(flow, { sheets: { newRows, allRows: rows } });
+        }
+      } catch (err: any) {
+        console.error(`Sheets polling error for flow "${flow.name}":`, err.message);
+      }
+    });
+    activeCrons.set(flow.id, task);
+  }
+}
+
+function removeSchedule(id: string) {
+  if (activeCrons.has(id)) {
+    activeCrons.get(id).stop();
+    activeCrons.delete(id);
+  }
+}
+
 async function setupSchedules() {
   console.log("⏰ Setting up schedules...");
   const flows = await FlowModel.all();
   console.log(`📊 Found ${flows.length} flows to check for schedules.`);
   flows.forEach(flow => {
-    const trigger = (flow.nodes as any[]).find((n: any) => n.type === 'trigger_schedule');
-    if (trigger && trigger.config.cron && flow.enabled) {
-      console.log(`   - Scheduling flow: ${flow.name} (${trigger.config.cron})`);
-      const task = cron.schedule(trigger.config.cron, () => {
-        console.log(`Running scheduled flow: ${flow.name}`);
-        executeFlow(flow, { trigger: 'schedule' });
-      });
-      activeCrons.set(flow.id, task);
-    }
+    upsertSchedule(flow);
   });
   console.log("✅ Schedules setup complete.");
+}
+
+async function setupWebhooks() {
+  console.log("📡 Syncing Telegram webhooks...");
+  const flows = await FlowModel.all();
+  for (const flow of flows) {
+    if (flow.enabled) {
+      await syncTelegramWebhook(flow);
+    }
+  }
 }
 
 // Uncaught Error Handlers
@@ -312,6 +504,7 @@ async function start() {
   try {
     await initDb();
     await setupSchedules();
+    await setupWebhooks();
     
     app.listen(PORT, () => {
       console.log(`✨ Server is LIVE on port ${PORT}`);
