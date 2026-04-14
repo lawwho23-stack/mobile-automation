@@ -13,8 +13,23 @@ const pool = new Pool({
 
 export const db = pool;
 
-// Initialize tables (Optional if you run the SQL script in Supabase dashboard)
+// Test connection
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
+});
+
+// Initialize tables
 export const initDb = async () => {
+  console.log("🐘 Attempting to connect to PostgreSQL...");
+  try {
+    const client = await pool.connect();
+    console.log("✅ Database connected successfully!");
+    client.release();
+  } catch (err: any) {
+    console.error("❌ Database connection failed:", err.message);
+    throw err;
+  }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS flows (
       id TEXT PRIMARY KEY,

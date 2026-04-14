@@ -274,10 +274,13 @@ app.delete('/api/credentials/:id', async (req, res) => {
 const activeCrons = new Map();
 
 async function setupSchedules() {
+  console.log("⏰ Setting up schedules...");
   const flows = await FlowModel.all();
+  console.log(`📊 Found ${flows.length} flows to check for schedules.`);
   flows.forEach(flow => {
     const trigger = (flow.nodes as any[]).find((n: any) => n.type === 'trigger_schedule');
     if (trigger && trigger.config.cron && flow.enabled) {
+      console.log(`   - Scheduling flow: ${flow.name} (${trigger.config.cron})`);
       const task = cron.schedule(trigger.config.cron, () => {
         console.log(`Running scheduled flow: ${flow.name}`);
         executeFlow(flow, { trigger: 'schedule' });
@@ -285,15 +288,40 @@ async function setupSchedules() {
       activeCrons.set(flow.id, task);
     }
   });
+  console.log("✅ Schedules setup complete.");
 }
+
+// Uncaught Error Handlers
+process.on('uncaughtException', (err) => {
+  console.error('🔥 CRITICAL: Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔥 CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // Start Server
 async function start() {
-  await initDb();
-  await setupSchedules();
-  app.listen(PORT, () => {
-    console.log(`Backend with Supabase (PG) running on port ${PORT}`);
+  console.log("🚀 Starting Mobile Automation Server...");
+  console.log("📂 Environment Check:", {
+    HAS_DB_URL: !!process.env.DATABASE_URL,
+    DATABASE_URL_START: process.env.DATABASE_URL?.substring(0, 15) + "...",
+    PORT: PORT
   });
+
+  try {
+    await initDb();
+    await setupSchedules();
+    
+    app.listen(PORT, () => {
+      console.log(`✨ Server is LIVE on port ${PORT}`);
+      console.log(`👉 API Base: ${process.env.BASE_URL || 'http://localhost:' + PORT}`);
+    });
+  } catch (err: any) {
+    console.error("💥 BOOM! Server failed to start:");
+    console.error(err);
+    process.exit(1);
+  }
 }
 
 start().catch(err => console.error("Startup failed", err));
