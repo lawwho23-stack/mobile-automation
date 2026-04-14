@@ -17,7 +17,20 @@ export function MobileLayout({ children, onAddClick }: MobileLayoutProps) {
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [isCredsOpen, setIsCredsOpen] = useState(false);
   const [isFlowsOpen, setIsFlowsOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const { isSimulating, startSimulation, stopSimulation } = useFlowStore();
+
+  const handleSave = async () => {
+    setSaveStatus('saving');
+    try {
+      await useFlowStore.getState().saveFlow();
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  };
   const lang: Language = 'my';
 
   return (
@@ -43,11 +56,20 @@ export function MobileLayout({ children, onAddClick }: MobileLayoutProps) {
             </button>
           ) : (
             <div className="flex items-center gap-2">
-               <button 
-                onClick={() => useFlowStore.getState().saveFlow()}
-                className="h-10 px-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold active:scale-95 transition-all"
+              <button
+                onClick={handleSave}
+                disabled={saveStatus === 'saving'}
+                className={`h-10 px-4 rounded-full text-xs font-bold active:scale-95 transition-all border ${
+                  saveStatus === 'saved'  ? 'bg-emerald-500/30 text-emerald-300 border-emerald-500/50' :
+                  saveStatus === 'error'  ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                  saveStatus === 'saving' ? 'bg-slate-700/50 text-slate-500 border-slate-600/30' :
+                  'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                }`}
               >
-                {getTranslation(lang, 'save')}
+                {saveStatus === 'saving' ? 'သိမ်းနေသည်...' :
+                 saveStatus === 'saved'  ? '✓ သိမ်းပြီး' :
+                 saveStatus === 'error'  ? '✗ မအောင်မြင်' :
+                 getTranslation(lang, 'save')}
               </button>
               <button 
                 onClick={startSimulation}

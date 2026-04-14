@@ -111,25 +111,22 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const { nodes, activeFlowId } = get();
     if (nodes.length === 0) return;
     
-    try {
-      const payload = {
-        id: activeFlowId,
-        name: name || (activeFlowId ? undefined : 'Flow ' + new Date().toLocaleTimeString()),
-        nodes,
-        enabled: true
-      };
-      
-      const res = await fetch(`${API_BASE}/flows`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const savedFlow = await res.json();
-      set({ activeFlowId: savedFlow.id });
-      get().fetchFlows();
-    } catch (err) {
-      console.error('Failed to save flow', err);
-    }
+    const payload = {
+      id: activeFlowId,
+      name: name || (activeFlowId ? undefined : 'Flow ' + new Date().toLocaleTimeString()),
+      nodes,
+      enabled: true
+    };
+
+    const res = await fetch(`${API_BASE}/flows`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const savedFlow = await res.json();
+    set({ activeFlowId: savedFlow.id });
+    get().fetchFlows();
   },
 
   deleteFlow: async (id) => {
