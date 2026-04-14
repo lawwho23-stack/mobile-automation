@@ -1,6 +1,11 @@
-import { Play, Settings, Menu, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { Play, Settings, Menu, Plus, Terminal, Layers, History } from 'lucide-react';
 
 import { useFlowStore } from '../store/flowStore';
+import { getTranslation, Language } from '../lib/i18n';
+import { ExecutionLogsSheet } from './ExecutionLogsSheet';
+import { CredentialsSheet } from './CredentialsSheet';
+import { FlowListSheet } from './FlowListSheet';
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -8,67 +13,102 @@ interface MobileLayoutProps {
 }
 
 export function MobileLayout({ children, onAddClick }: MobileLayoutProps) {
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
+  const [isCredsOpen, setIsCredsOpen] = useState(false);
+  const [isFlowsOpen, setIsFlowsOpen] = useState(false);
   const { isSimulating, startSimulation, stopSimulation } = useFlowStore();
+  const lang: Language = 'my';
 
   return (
-    <div className="h-screen w-full bg-slate-900 text-slate-50 flex flex-col overflow-hidden">
-      {/* Top Header - Glassmorphism */}
-      <header className="z-10 px-4 py-3 glass sticky top-0 flex justify-between items-center shadow-md">
+    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 font-sans selection:bg-primary/30 overflow-hidden">
+      <header className="glass fixed top-0 w-full h-16 px-4 flex items-center justify-between z-40 border-b border-slate-700/50">
         <div className="flex items-center gap-2">
-          <Menu className="w-5 h-5 text-slate-300" />
-          <h1 className="text-lg font-semibold tracking-tight">Automation Flow</h1>
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
+            <Layers className="w-5 h-5 text-white" />
+          </div>
+          <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+            {getTranslation(lang, 'app_title')}
+          </span>
         </div>
-        <div>
+        
+        <div className="flex items-center gap-2">
           {isSimulating ? (
             <button 
               onClick={stopSimulation}
-              className="bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 active:scale-95 transition-all"
+              className="h-10 px-4 bg-red-500/20 text-red-400 border border-red-500/30 rounded-full text-xs font-bold flex items-center gap-2 active:scale-95 transition-all animate-pulse"
             >
-              Stop
+              <div className="w-2 h-2 rounded-full bg-red-500" />
+              {getTranslation(lang, 'stop')}
             </button>
           ) : (
-            <button 
-              onClick={startSimulation}
-              className="bg-primary/20 text-blue-400 border border-primary/50 px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 active:scale-95 transition-all"
-            >
-              <Play className="w-3.5 h-3.5" fill="currentColor" />
-              Run
-            </button>
+            <div className="flex items-center gap-2">
+               <button 
+                onClick={() => useFlowStore.getState().saveFlow()}
+                className="h-10 px-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold active:scale-95 transition-all"
+              >
+                {getTranslation(lang, 'save')}
+              </button>
+              <button 
+                onClick={startSimulation}
+                className="h-10 px-5 bg-primary text-white rounded-full text-xs font-bold flex items-center gap-2 shadow-lg shadow-primary/25 active:scale-95 transition-all"
+              >
+                <Play className="w-3.5 h-3.5" fill="currentColor" />
+                {getTranslation(lang, 'run')}
+              </button>
+            </div>
           )}
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto pb-24 relative">
-        <div className="max-w-md mx-auto w-full p-4 relative z-0">
+      <main className="flex-1 mt-16 mb-16 overflow-y-auto">
+        <div className="max-w-md mx-auto h-full relative">
+           <div className="absolute top-4 right-4 z-20">
+            <button 
+              onClick={onAddClick}
+              className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/20 active:scale-90 transition-all border border-primary/50"
+            >
+              <Plus className="w-6 h-6 text-white" />
+            </button>
+          </div>
           {children}
         </div>
       </main>
 
-      {/* Floating Add Button */}
-      <button 
-        onClick={onAddClick}
-        className="absolute bottom-20 right-6 z-20 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30 active:scale-90 transition-transform"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
-
-      {/* Bottom Navigation */}
       <nav className="glass fixed bottom-0 w-full pb-safe pt-2 px-6 flex justify-around items-center border-t border-slate-700/50 z-30 h-16">
-        <button className="flex flex-col items-center gap-1 text-primary">
+        <button 
+          onClick={() => setIsFlowsOpen(true)}
+          className={`flex flex-col items-center gap-1 ${isFlowsOpen ? 'text-primary' : 'text-slate-400'}`}
+        >
           <div className="p-1.5 bg-primary/20 rounded-xl">
-            <Menu className="w-5 h-5" />
+            <Layers className="w-5 h-5" />
           </div>
-          <span className="text-[10px] font-medium">Flows</span>
+          <span className="text-[10px] font-medium">{getTranslation(lang, 'flows')}</span>
         </button>
         
-        <button className="flex flex-col items-center gap-1 text-slate-400">
+        <button 
+          onClick={() => setIsCredsOpen(true)}
+          className={`flex flex-col items-center gap-1 ${isCredsOpen ? 'text-primary' : 'text-slate-400'}`}
+        >
           <div className="p-1.5 hover:bg-slate-800 rounded-xl transition-colors">
             <Settings className="w-5 h-5" />
           </div>
-          <span className="text-[10px] font-medium">Settings</span>
+          <span className="text-[10px] font-medium">{getTranslation(lang, 'configurations')}</span>
+        </button>
+        
+        <button 
+          onClick={() => setIsLogsOpen(true)}
+          className={`flex flex-col items-center gap-1 ${isLogsOpen ? 'text-primary' : 'text-slate-400'}`}
+        >
+          <div className="p-1.5 hover:bg-slate-800 rounded-xl transition-colors">
+            <History className="w-5 h-5" />
+          </div>
+          <span className="text-[10px] font-medium">{getTranslation(lang, 'history')}</span>
         </button>
       </nav>
+
+      <ExecutionLogsSheet isOpen={isLogsOpen} onClose={() => setIsLogsOpen(false)} />
+      <CredentialsSheet isOpen={isCredsOpen} onClose={() => setIsCredsOpen(false)} />
+      <FlowListSheet isOpen={isFlowsOpen} onClose={() => setIsFlowsOpen(false)} />
     </div>
   );
 }
