@@ -279,12 +279,16 @@ export function ConfigNodeSheet({ node, onClose, onSave }: ConfigNodeSheetProps)
       {node && (
         <>
           <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
             onClick={onClose}
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40"
           />
           <motion.div 
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            initial={{ y: '100%' }} 
+            animate={{ y: 0 }} 
+            exit={{ y: '100%' }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="fixed bottom-0 left-0 right-0 h-[70vh] bg-slate-900 border-t border-slate-700/50 rounded-t-3xl z-50 flex flex-col shadow-2xl"
           >
