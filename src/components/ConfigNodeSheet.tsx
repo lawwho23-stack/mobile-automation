@@ -272,7 +272,6 @@ export function ConfigNodeSheet({ node, onClose, onSave }: ConfigNodeSheetProps)
           </div>
         );
     }
-    }
   };
 
   return (
