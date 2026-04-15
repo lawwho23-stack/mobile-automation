@@ -1,8 +1,26 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Key, Plus, Trash2, ShieldCheck } from 'lucide-react';
+import { X, Key, Plus, Trash2, ShieldCheck, Brain, Flame, Sparkles } from 'lucide-react';
 import { useFlowStore } from '../store/flowStore';
 import { useEffect, useState } from 'react';
 import { getTranslation } from '../lib/i18n';
+
+const PROVIDER_ICONS: Record<string, React.ReactNode> = {
+  openai: <Brain className="w-5 h-5 text-green-400" />,
+  anthropic: <Flame className="w-5 h-5 text-orange-400" />,
+  google: <Sparkles className="w-5 h-5 text-blue-400" />,
+  deepseek: <Brain className="w-5 h-5 text-purple-400" />,
+  mistral: <Flame className="w-5 h-5 text-indigo-400" />,
+  google_oauth: <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />,
+};
+
+const PROVIDER_LABELS: Record<string, string> = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  google: 'Google',
+  deepseek: 'DeepSeek',
+  mistral: 'Mistral',
+  google_oauth: 'Google OAuth',
+};
 
 interface CredentialsSheetProps {
   isOpen: boolean;
@@ -24,6 +42,11 @@ export function CredentialsSheet({ isOpen, onClose }: CredentialsSheetProps) {
     await saveCredential(newCred);
     setIsAdding(false);
     setNewCred({ name: '', provider: 'openai', apiKey: '' });
+  };
+
+  const getProviderDisplayName = (provider: string, name: string) => {
+    if (provider === 'google') return name || 'Google Account';
+    return PROVIDER_LABELS[provider] || provider;
   };
 
   return (
@@ -72,13 +95,27 @@ export function CredentialsSheet({ isOpen, onClose }: CredentialsSheetProps) {
               {isAdding && (
                 <div className="bg-slate-800 p-4 rounded-2xl border border-primary/30 space-y-3 mb-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">အမည် (နမူနာ - My OpenAI)</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">AI အမျိုးအစား</label>
+                    <select 
+                      value={newCred.provider}
+                      onChange={e => setNewCred({...newCred, provider: e.target.value})}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 outline-none focus:border-primary transition-colors"
+                    >
+                      <option value="openai">OpenAI</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="google">Google</option>
+                      <option value="deepseek">DeepSeek</option>
+                      <option value="mistral">Mistral</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">အမည် (နမူနာ - My OpenAI Key)</label>
                     <input 
                       type="text" 
                       value={newCred.name}
                       onChange={e => setNewCred({...newCred, name: e.target.value})}
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 outline-none focus:border-primary transition-colors"
-                      placeholder="Credential Name"
+                      placeholder="My API Key"
                     />
                   </div>
                   <div className="space-y-1">
@@ -96,13 +133,13 @@ export function CredentialsSheet({ isOpen, onClose }: CredentialsSheetProps) {
                       onClick={() => setIsAdding(false)}
                       className="flex-1 py-2 rounded-xl bg-slate-700 text-slate-300 text-sm font-medium"
                     >
-                      Cancel
+                      မလုပ်တော့ပါ
                     </button>
                     <button 
                       onClick={handleSave}
                       className="flex-1 py-2 rounded-xl bg-primary text-white text-sm font-medium"
                     >
-                      Save Key
+                      သိမ်းမည်
                     </button>
                   </div>
                 </div>
@@ -118,16 +155,12 @@ export function CredentialsSheet({ isOpen, onClose }: CredentialsSheetProps) {
                   <div key={cred.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center">
-                        {cred.provider === 'google' ? (
-                          <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="G" />
-                        ) : (
-                          <Key className="w-5 h-5 text-slate-400" />
-                        )}
+                        {PROVIDER_ICONS[cred.provider] || <Key className="w-5 h-5 text-slate-400" />}
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-slate-200">{cred.name}</div>
+                        <div className="text-sm font-semibold text-slate-200">{getProviderDisplayName(cred.provider, cred.name)}</div>
                         <div className="text-[10px] text-slate-500 font-mono uppercase tracking-tighter">
-                          {cred.provider} {cred.apiKey ? `• ****${cred.apiKey.slice(-4)}` : '• OAuth Attached'}
+                          {cred.apiKey ? `****${cred.apiKey.slice(-4)}` : 'OAuth Connected'}
                         </div>
                       </div>
                     </div>

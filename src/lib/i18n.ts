@@ -49,7 +49,13 @@ export const translations = {
     wizard_recommended: "Recommended",
     wizard_add_next: "What comes next?",
     wizard_all_nodes: "All Nodes",
-    wizard_done: "Done"
+    wizard_done: "Done",
+    save_api_key: "Save API Key",
+    add_api_key: "Add API Key",
+    no_saved_keys: "No saved keys yet",
+    connect_google: "Connect Google",
+    key_name: "Name",
+    api_key: "API Key"
   },
   my: {
     add_node: "အလိုအလျောက်လုပ်ဆောင်ချက်အသစ်ထည့်မည်",
@@ -101,7 +107,13 @@ export const translations = {
     wizard_recommended: "အကြံပါး",
     wizard_add_next: "နောက်ထပ် ဘာထည့်မလဲ။",
     wizard_all_nodes: "လုပ်ဆောင်ချက်များ အားလုံး",
-    wizard_done: "ပါပါပီး"
+    wizard_done: "ပါပါပီး",
+    save_api_key: "API Key သိမ်းမည်",
+    add_api_key: "API Key ထည့်မည်",
+    no_saved_keys: "သိမ်းဆည်းထားသော Key များ မရှိသေးပါ",
+    connect_google: "Google နှင့် ချိတ်ဆက်မည်",
+    key_name: "အမည်",
+    api_key: "API Key"
   }
 };
 
