@@ -117,11 +117,80 @@ const AGENT_TEMPLATES = [
   { label: 'Translate EN to MY (ဘာသာပြန်မည်)', prompt: 'Translate the following English text to natural Burmese: {{input}}' },
 ];
 
+const AI_PROVIDERS = [
+  { value: 'openai', label: 'OpenAI (GPT)', labelMy: 'OpenAI (GPT)' },
+  { value: 'anthropic', label: 'Anthropic (Claude)', labelMy: 'Anthropic (Claude)' },
+  { value: 'google', label: 'Google (Gemini)', labelMy: 'Google (Gemini)' },
+  { value: 'deepseek', label: 'DeepSeek', labelMy: 'DeepSeek' },
+  { value: 'mistral', label: 'Mistral', labelMy: 'Mistral' },
+];
+
+const AI_MODELS: Record<string, { value: string; label: string }[]> = {
+  openai: [
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+  ],
+  anthropic: [
+    { value: 'claude-sonnet-4-20250514', label: 'Claude 4 Sonnet' },
+    { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+    { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
+    { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+  ],
+  google: [
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+    { value: 'gemini-pro', label: 'Gemini Pro' },
+  ],
+  deepseek: [
+    { value: 'deepseek-chat', label: 'DeepSeek Chat' },
+    { value: 'deepseek-coder', label: 'DeepSeek Coder' },
+  ],
+  mistral: [
+    { value: 'mistral-large-latest', label: 'Mistral Large' },
+    { value: 'mistral-small-latest', label: 'Mistral Small' },
+    { value: 'mistral-medium-latest', label: 'Mistral Medium' },
+  ],
+};
+
 function ActionAgentForm({ config, onChange, credentials, nodeId }: { config: any, onChange: (c: any) => void, credentials: any[], nodeId: string }) {
+  const lang = 'my';
+  const currentProvider = config.provider || 'openai';
+  const availableModels = AI_MODELS[currentProvider] || AI_MODELS.openai;
+  
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">သိမ်းထားသော Key (Saved Key)</label>
+        <label className="text-sm font-medium text-slate-300">AI အမျိုးအစား</label>
+        <select 
+          value={config.provider || 'openai'}
+          onChange={(e) => onChange({...config, provider: e.target.value, model: ''})}
+          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50"
+        >
+          {AI_PROVIDERS.map(p => (
+            <option key={p.value} value={p.value}>{p.labelMy}</option>
+          ))}
+        </select>
+      </div>
+      
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-slate-300">Model ရွေးပါ</label>
+        <select 
+          value={config.model || ''}
+          onChange={(e) => onChange({...config, model: e.target.value})}
+          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50"
+        >
+          <option value="">Default</option>
+          {availableModels.map(m => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
+        </select>
+      </div>
+      
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-slate-300">သိမ်းထားသော Key</label>
         <select 
           value={config.credentialId || ''}
           onChange={(e) => onChange({...config, credentialId: e.target.value, apiKey: ''})}
@@ -141,12 +210,12 @@ function ActionAgentForm({ config, onChange, credentials, nodeId }: { config: an
             value={config.apiKey || ''}
             onChange={(e) => onChange({...config, apiKey: e.target.value})}
             placeholder="sk-..."
-            className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
       )}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">AI ကိုခိုင်းစေမည့်အချက်များ (Prompt)</label>
+        <label className="text-sm font-medium text-slate-300">AI ကိုခိုင်းစေမည့် ပါဝါ</label>
         
         <div className="flex flex-wrap gap-2 mb-2">
           {AGENT_TEMPLATES.map((t, i) => (
@@ -165,7 +234,7 @@ function ActionAgentForm({ config, onChange, credentials, nodeId }: { config: an
           onChange={(e) => onChange({...config, prompt: e.target.value})}
           placeholder="ဘာလုပ်ပေးရမလဲ..."
           rows={4}
-          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 font-sans"
+          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-sans"
         />
       </div>
       <VariablePicker currentNodeId={nodeId} onSelect={(v) => onChange({...config, prompt: (config.prompt || '') + v})} />

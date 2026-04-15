@@ -133,7 +133,11 @@ async function executeFlow(flow: any, initialContext: any = {}) {
           }
 
           case 'action_agent': {
-            let { apiKey, prompt, model, credentialId } = node.config;
+            let { apiKey, prompt, model, provider, credentialId } = node.config;
+            const resolvedPrompt = resolveVariables(prompt, log.context);
+            
+            // Default to OpenAI if no provider specified
+            provider = provider || 'openai';
             
             if (credentialId) {
               const creds = await CredentialModel.all();
@@ -141,14 +145,71 @@ async function executeFlow(flow: any, initialContext: any = {}) {
               if (cred) apiKey = cred.api_key;
             }
 
-            const resolvedPrompt = resolveVariables(prompt, log.context);
-            const openai = new OpenAI({ apiKey });
-            const response = await openai.chat.completions.create({
-              model: model || 'gpt-3.5-turbo',
-              messages: [{ role: 'user', content: resolvedPrompt }],
-            });
-
-            const content = response.choices[0]?.message?.content;
+            let content = '';
+            
+            if (provider === 'openai') {
+              const openai = new OpenAI({ apiKey: apiKey || process.env.OPENAI_API_KEY });
+              const response = await openai.chat.completions.create({
+                model: model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: resolvedPrompt }],
+              });
+              content = response.choices[0]?.message?.content || '';
+            } else if (provider === 'anthropic') {
+              const anthropicKey = apiKey || process.env.ANTHROPIC_API_KEY;
+              const anthropicRes = await axios.post('https://api.anthropic.com/v1/messages', {
+                model: model || 'claude-3-haiku-20240307',
+                max_tokens: 1024,
+                messages: [{ role: 'user', content: resolvedPrompt }]
+              }, {
+                headers: {
+                  'x-api-key': anthropicKey,
+                  'anthropic-version': '2023-06-01',
+                  'content-type': 'application/json'
+                }
+              });
+              content = anthropicRes.data.content[0]?.text || '';
+            } else if (provider === 'google') {
+              const googleKey = apiKey || process.env.GOOGLE_API_KEY;
+              const googleRes = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-pro'}:generateContent?key=${googleKey}`, {
+                contents: [{ parts: [{ text: resolvedPrompt }] }]
+              }, {
+                headers: { 'content-type': 'application/json' }
+              });
+              content = googleRes.data.candidates[0]?.content?.parts[0]?.text || '';
+            } else if (provider === 'deepseek') {
+              const deepseekKey = apiKey || process.env.DEEPSEEK_API_KEY;
+              const deepseekRes = await axios.post('https://api.deepseek.com/v1/chat/completions', {
+                model: model || 'deepseek-chat',
+                messages: [{ role: 'user', content: resolvedPrompt }]
+              }, {
+                headers: {
+                  'Authorization': `Bearer ${deepseekKey}`,
+                  'content-type': 'application/json'
+                }
+              });
+              content = deepseekRes.data.choices[0]?.message?.content || '';
+            } else if (provider === 'mistral') {
+              const mistralKey = apiKey || process.env.MISTRAL_API_KEY;
+              const mistralRes = await axios.post('https://api.mistral.ai/v1/chat/completions', {
+                model: model || 'mistral-small-latest',
+                messages: [{ role: 'user', content: resolvedPrompt }]
+              }, {
+                headers: {
+                  'Authorization': `Bearer ${mistralKey}`,
+                  'content-type': 'application/json'
+                }
+              });
+              content = mistralRes.data.choices[0]?.message?.content || '';
+            } else {
+              // Default to OpenAI
+              const openai = new OpenAI({ apiKey: apiKey || process.env.OPENAI_API_KEY });
+              const response = await openai.chat.completions.create({
+                model: model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: resolvedPrompt }],
+              });
+              content = response.choices[0]?.message?.content || '';
+            }
+            
             log.context[node.id] = { output: content };
             nodeLog.output = content;
             break;
@@ -357,32 +418,89 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 app.get('/auth/google', (req, res) => {
+  const { state } = req.query;
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: [
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/gmail.send',
       'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
     ],
-    prompt: 'consent'
+    prompt: 'consent',
+    state: state as string || 'default',
   });
   res.redirect(url);
 });
 
 app.get('/auth/google/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
   try {
     const { tokens } = await oauth2Client.getToken(code as string);
-    // Create credential
+    
+    // Get user email using the access token
+    const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+    
+    const userEmail = userInfoResponse.data.email;
+    
     await CredentialModel.create({
-      name: 'Google Account (OAuth)',
+      name: userEmail || 'Google Account',
       provider: 'google',
       apiKey: tokens.refresh_token || '',
-      meta: tokens
+      meta: tokens,
+      baseUrl: null,
     });
-    res.send('<script>window.close();</script> Authentication successful! You can close this window.');
+    
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+            .container { text-align: center; padding: 40px; }
+            .success { font-size: 48px; margin-bottom: 16px; }
+            h1 { font-size: 24px; margin-bottom: 8px; }
+            p { color: #94a3b8; margin-bottom: 24px; }
+            button { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="success">✅</div>
+            <h1>အောင်မြင်ပါပီး!</h1>
+            <p>Google Account ချိတ်ဆက်ပြီးပါပါပီး။</p>
+            <button onclick="window.close()">ပို့လိုက်ပါမည်</button>
+          </div>
+        </body>
+      </html>
+    `);
   } catch (err) {
-    res.status(500).send('Authentication failed');
+    console.error('Google OAuth error:', err);
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+            .container { text-align: center; padding: 40px; }
+            .error { font-size: 48px; margin-bottom: 16px; }
+            h1 { font-size: 24px; margin-bottom: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="error">❌</div>
+            <h1>ချိတ်ဆက်မှုမအောင်မြင်ပါ။</h1>
+          </div>
+        </body>
+      </html>
+    `);
   }
 });
 
