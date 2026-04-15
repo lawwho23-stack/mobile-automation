@@ -16,8 +16,13 @@ interface ConfigNodeSheetProps {
 function TriggerScheduleForm({ config, onChange }: { config: any, onChange: (c: any) => void }) {
   return (
     <div className="space-y-4">
+      <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+        <p className="text-xs text-emerald-400">
+          ⏰ သတ်မှတ်ထားသော အချိန်တွင် စတင်ပါမည်။
+        </p>
+      </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">သတ်မှတ်ချက် (Cron Expression)</label>
+        <label className="text-sm font-medium text-slate-300">Schedule</label>
         <input 
           type="text" 
           value={config.cron || '0 9 * * *'}
@@ -25,7 +30,7 @@ function TriggerScheduleForm({ config, onChange }: { config: any, onChange: (c: 
           placeholder="0 9 * * *"
           className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
-        <p className="text-xs text-slate-500 mt-1">ဥပမာ- '0 9 * * *' သည် နေ့စဉ် မနက် ၉ နာရီတွင် အလုပ်လုပ်ပါမည်။</p>
+        <p className="text-xs text-slate-500 mt-1">0 9 * * * = နေ့စဉ် မနက် ၉ နာရီ</p>
       </div>
     </div>
   );
@@ -34,6 +39,11 @@ function TriggerScheduleForm({ config, onChange }: { config: any, onChange: (c: 
 function TriggerTelegramForm({ config, onChange, nodeId }: { config: any, onChange: (c: any) => void, nodeId: string }) {
   return (
     <div className="space-y-4">
+      <div className="p-4 bg-sky-500/10 border border-sky-500/20 rounded-2xl">
+        <p className="text-xs text-sky-400">
+          💡 ဤ trigger သည် Telegram bot သို့ မက်ဆေ့လာရင် လုပ်ငန်းစဉ်ကို စတင်ပါမည်။
+        </p>
+      </div>
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-slate-300">Bot Token</label>
         <input 
@@ -45,26 +55,21 @@ function TriggerTelegramForm({ config, onChange, nodeId }: { config: any, onChan
         />
       </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">စတင်စေမည့် စာသား (Trigger Command)</label>
+        <label className="text-sm font-medium text-slate-300">Command (optional)</label>
         <input 
           type="text" 
-          value={config.command || '/start'}
+          value={config.command || ''}
           onChange={(e) => onChange({...config, command: e.target.value})}
           placeholder="/start"
           className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
       </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">အော်တိုပြန်စာ (Auto Reply)</label>
-        <input 
-          type="text" 
-          value={config.autoReply || ''}
-          onChange={(e) => onChange({...config, autoReply: e.target.value})}
-          placeholder="မင်္ဂလာပါ..."
-          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
+      <div className="text-xs text-slate-500 mt-2">
+        ဤနေရာမှာ အသုံးပါဝင်းမှုများ: <br/>
+        • <code className="bg-slate-800 px-1 rounded">telegram.message.text</code> - မက်ဆေ့စာသား<br/>
+        • <code className="bg-slate-800 px-1 rounded">telegram.message.chat.id</code> - Chat ID<br/>
+        • <code className="bg-slate-800 px-1 rounded">telegram.message.from.first_name</code> - အမည်
       </div>
-      <VariablePicker currentNodeId={nodeId} onSelect={(v) => onChange({...config, autoReply: (config.autoReply || '') + v})} />
     </div>
   );
 }
@@ -245,6 +250,11 @@ function ActionAgentForm({ config, onChange, credentials, nodeId }: { config: an
 function ActionTelegramForm({ config, onChange, nodeId }: { config: any, onChange: (c: any) => void, nodeId: string }) {
   return (
     <div className="space-y-4">
+      <div className="p-4 bg-sky-500/10 border border-sky-500/20 rounded-2xl">
+        <p className="text-xs text-sky-400">
+          💡 Telegram သို့ မက်ဆေ့ပို့မည်။
+        </p>
+      </div>
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-slate-300">Bot Token</label>
         <input
@@ -261,12 +271,12 @@ function ActionTelegramForm({ config, onChange, nodeId }: { config: any, onChang
           type="text"
           value={config.chatId || ''}
           onChange={(e) => onChange({...config, chatId: e.target.value})}
-          placeholder="ဥပမာ- 123456789 သို့မဟုတ် {{telegram.message.chat.id}}"
+          placeholder="123456789"
           className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
       </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">ပို့မည့် စာ (Message)</label>
+        <label className="text-sm font-medium text-slate-300">Message</label>
         <textarea
           value={config.message || ''}
           onChange={(e) => onChange({...config, message: e.target.value})}
@@ -389,6 +399,11 @@ function ActionCalendarForm({ config, onChange, credentials, nodeId }: { config:
 function ActionGmailForm({ config, onChange, credentials, nodeId }: { config: any, onChange: (c: any) => void, credentials: any[], nodeId: string }) {
   return (
     <div className="space-y-4">
+      <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+        <p className="text-xs text-red-400">
+          📧 Gmail ဖြင့် Email ပို့မည်။
+        </p>
+      </div>
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-slate-300">Google Account</label>
         <select
@@ -396,14 +411,14 @@ function ActionGmailForm({ config, onChange, credentials, nodeId }: { config: an
           onChange={(e) => onChange({...config, credentialId: e.target.value})}
           className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50"
         >
-          <option value="">Google Account ရွေးပါ</option>
+          <option value="">Select Account</option>
           {credentials.filter(c => c.provider === 'google').map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
       </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">လက်ခံသူ (To)</label>
+        <label className="text-sm font-medium text-slate-300">To</label>
         <input
           type="email"
           value={config.to || ''}
@@ -413,21 +428,22 @@ function ActionGmailForm({ config, onChange, credentials, nodeId }: { config: an
         />
       </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">ခေါင်းစဉ် (Subject)</label>
+        <label className="text-sm font-medium text-slate-300">Subject</label>
         <input
           type="text"
           value={config.subject || ''}
           onChange={(e) => onChange({...config, subject: e.target.value})}
-          placeholder="ဥပမာ- အချက်အလက်အသစ်"
+          placeholder="Subject"
           className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
       </div>
+
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">အကြောင်းအရာ (Body)</label>
+        <label className="text-sm font-medium text-slate-300">Body</label>
         <textarea
           value={config.body || ''}
           onChange={(e) => onChange({...config, body: e.target.value})}
-          placeholder="ဥပမာ- {{agent.output}}"
+          placeholder="Message..."
           rows={4}
           className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-sans"
         />

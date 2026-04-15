@@ -11,28 +11,24 @@ interface AddNodeSheetProps {
 
 const AVAILABLE_NODES = [
   // Triggers
-  { type: 'trigger_schedule', nameKey: 'trigger_schedule', icon: Calendar, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-  { type: 'trigger_telegram', nameKey: 'trigger_telegram', icon: Send, color: 'text-sky-400', bg: 'bg-sky-400/10' },
-  { type: 'trigger_sheets', nameKey: 'trigger_sheets', icon: Table, color: 'text-green-400', bg: 'bg-green-400/10' },
+  { type: 'trigger_schedule', name: 'Schedule', icon: Calendar, color: 'bg-emerald-500', desc: 'Run at specific time' },
+  { type: 'trigger_telegram', name: 'Telegram', icon: Send, color: 'bg-sky-500', desc: 'When message received' },
+  { type: 'trigger_sheets', name: 'Sheets', icon: Table, color: 'bg-green-500', desc: 'When new row added' },
   
   // Actions
-  { type: 'action_sheets', nameKey: 'action_sheets', icon: Table, color: 'text-green-400', bg: 'bg-green-400/10' },
-  { type: 'action_telegram', nameKey: 'action_telegram', icon: Send, color: 'text-sky-400', bg: 'bg-sky-400/10' },
-  { type: 'action_agent', nameKey: 'action_agent', icon: Bot, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-   { type: 'action_calendar', nameKey: 'action_calendar', icon: Calendar, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-  { type: 'action_gmail', nameKey: 'action_gmail', icon: Mail, color: 'text-red-400', bg: 'bg-red-400/10' },
-  { type: 'action_condition', nameKey: 'action_condition', icon: Zap, color: 'text-orange-400', bg: 'bg-orange-400/10' },
+  { type: 'action_telegram', name: 'Telegram', icon: Send, color: 'bg-sky-500', desc: 'Send message' },
+  { type: 'action_sheets', name: 'Sheets', icon: Table, color: 'bg-green-500', desc: 'Append row' },
+  { type: 'action_agent', name: 'AI Agent', icon: Bot, color: 'bg-purple-500', desc: 'Process with AI' },
+  { type: 'action_calendar', name: 'Calendar', icon: Calendar, color: 'bg-blue-500', desc: 'Create event' },
+  { type: 'action_gmail', name: 'Email', icon: Mail, color: 'bg-red-500', desc: 'Send email' },
+  { type: 'action_condition', name: 'Condition', icon: Zap, color: 'bg-orange-500', desc: 'Filter data' },
 ] as const;
 
 export function AddNodeSheet({ isOpen, onClose, onSelectNode }: AddNodeSheetProps) {
-  // Hardcoded to 'my' for now as per Myanmar target users
-  const lang = 'my';
-
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -41,7 +37,6 @@ export function AddNodeSheet({ isOpen, onClose, onSelectNode }: AddNodeSheetProp
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40"
           />
           
-          {/* Bottom Sheet */}
           <motion.div 
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
@@ -51,7 +46,7 @@ export function AddNodeSheet({ isOpen, onClose, onSelectNode }: AddNodeSheetProp
           >
             <div className="flex-none p-4 pb-2 text-center relative border-b border-slate-800">
               <div className="absolute left-1/2 -translate-x-1/2 top-2 w-12 h-1.5 bg-slate-700 rounded-full" />
-              <h2 className="text-lg font-semibold text-slate-100 mt-2">{getTranslation(lang, 'add_node')}</h2>
+              <h2 className="text-lg font-semibold text-slate-100 mt-2">Add Node</h2>
               <button 
                 onClick={onClose}
                 className="absolute right-4 top-4 p-2 bg-slate-800 rounded-full text-slate-400 active:scale-90"
@@ -60,24 +55,22 @@ export function AddNodeSheet({ isOpen, onClose, onSelectNode }: AddNodeSheetProp
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-safe">
-              {AVAILABLE_NODES.map((node) => (
-                <button
-                  key={node.type}
-                  onClick={() => onSelectNode(node.type as NodeType, getTranslation(lang, node.nameKey as any))}
-                  className="w-full flex items-center gap-4 p-4 rounded-2xl bg-slate-800/50 border border-slate-700/30 active:bg-slate-700 transition-colors text-left"
-                >
-                  <div className={`p-3 rounded-xl ${node.bg}`}>
-                    <node.icon className={`w-6 h-6 ${node.color}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-100">{getTranslation(lang, node.nameKey as any)}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {node.type.startsWith('trigger') ? getTranslation(lang, 'start_flow') : getTranslation(lang, 'perform_action')}
-                    </p>
-                  </div>
-                </button>
-              ))}
+            <div className="flex-1 overflow-y-auto p-4 pb-safe">
+              <div className="grid grid-cols-3 gap-3">
+                {AVAILABLE_NODES.map((node) => (
+                  <button
+                    key={node.type}
+                    onClick={() => onSelectNode(node.type as NodeType, node.name)}
+                    className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-slate-800/50 border border-slate-700/30 active:bg-slate-700 transition-colors"
+                  >
+                    <div className={`w-12 h-12 ${node.color} rounded-xl flex items-center justify-center shadow-lg`}>
+                      <node.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-200">{node.name}</span>
+                    <span className="text-[10px] text-slate-500 text-center">{node.desc}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </motion.div>
         </>
