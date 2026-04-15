@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Settings, Menu, Plus, Terminal, Layers, History } from 'lucide-react';
+import { Play, Settings, Menu, Plus, Terminal, Layers, History, Sparkles } from 'lucide-react';
 
 import { useFlowStore } from '../store/flowStore';
 import { getTranslation } from '../lib/i18n';
@@ -11,9 +11,10 @@ import { FlowListSheet } from './FlowListSheet';
 interface MobileLayoutProps {
   children: React.ReactNode;
   onAddClick: () => void;
+  onWizardClick?: () => void;
 }
 
-export function MobileLayout({ children, onAddClick }: MobileLayoutProps) {
+export function MobileLayout({ children, onAddClick, onWizardClick }: MobileLayoutProps) {
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [isCredsOpen, setIsCredsOpen] = useState(false);
   const [isFlowsOpen, setIsFlowsOpen] = useState(false);
@@ -46,6 +47,13 @@ export function MobileLayout({ children, onAddClick }: MobileLayoutProps) {
         </div>
         
         <div className="flex items-center gap-2">
+          <button
+            onClick={onWizardClick}
+            className="h-10 px-4 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs font-bold flex items-center gap-2 active:scale-95 transition-all"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            AI Builder
+          </button>
           {isSimulating ? (
             <button 
               onClick={stopSimulation}

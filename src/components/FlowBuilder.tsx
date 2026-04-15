@@ -5,7 +5,8 @@ import { FlowCard } from './FlowCard';
 import { AddNodeSheet } from './AddNodeSheet';
 import { ConfigNodeSheet } from './ConfigNodeSheet';
 import { MobileLayout } from './MobileLayout';
-import { Zap, Bot } from 'lucide-react';
+import { SmartWizard } from './SmartWizard';
+import { Zap, Bot, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { getTranslation } from '../lib/i18n';
@@ -14,6 +15,7 @@ export function FlowBuilder() {
   const { nodes, removeNode, addNode, updateNodeConfig, isSimulating, simulationStep, nextSimulationStep, stopSimulation } = useFlowStore();
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
   const [editingNode, setEditingNode] = useState<FlowNode | null>(null);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Hardcoded to 'my' for now
   const lang = 'my';
@@ -42,7 +44,7 @@ export function FlowBuilder() {
   };
 
   return (
-    <MobileLayout onAddClick={() => setIsAddSheetOpen(true)}>
+    <MobileLayout onAddClick={() => setIsAddSheetOpen(true)} onWizardClick={() => setIsWizardOpen(true)}>
       <div className="flex flex-col items-center justify-start min-h-full py-4 pb-12">
         {nodes.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-10">
@@ -65,11 +67,21 @@ export function FlowBuilder() {
             
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-              className="mt-10 flex items-center gap-3 text-slate-500"
+              className="mt-10 flex flex-col items-center gap-3"
             >
-              <div className="h-px w-8 bg-slate-800" />
-              <span className="text-[10px] uppercase font-bold tracking-[0.2em]">Start Building</span>
-              <div className="h-px w-8 bg-slate-800" />
+              <div className="flex items-center gap-3 text-slate-500">
+                <div className="h-px w-8 bg-slate-800" />
+                <span className="text-[10px] uppercase font-bold tracking-[0.2em]">Start Building</span>
+                <div className="h-px w-8 bg-slate-800" />
+              </div>
+              
+              <button
+                onClick={() => setIsWizardOpen(true)}
+                className="mt-4 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-primary to-purple-500 rounded-xl text-white font-medium shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+              >
+                <Sparkles className="w-4 h-4" />
+                {getTranslation(lang, 'wizard_subtitle')}
+              </button>
             </motion.div>
           </div>
         ) : (
@@ -109,6 +121,16 @@ export function FlowBuilder() {
         node={editingNode}
         onClose={() => setEditingNode(null)}
         onSave={updateNodeConfig}
+      />
+
+      <SmartWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onComplete={(flowNodes) => {
+          flowNodes.forEach(node => addNode(node));
+        }}
+        existingNodes={nodes}
+        onAddNode={handleAddNode}
       />
     </MobileLayout>
   );
