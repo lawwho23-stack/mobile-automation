@@ -342,6 +342,11 @@ async function executeFlow(flow: any, initialContext: any = {}) {
   }
 }
 
+// Health check endpoint (also used for keep-alive)
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Routes
 app.post('/webhook/telegram/:flowId', async (req, res) => {
   const { flowId } = req.params;
@@ -624,6 +629,18 @@ async function start() {
     await setupSchedules();
     await setupWebhooks();
     
+    // Keep-alive: ping self every 14 min to prevent Render free tier spin-down
+    if (process.env.BASE_URL) {
+      cron.schedule('*/14 * * * *', async () => {
+        try {
+          await axios.get(`${process.env.BASE_URL}/api/health`);
+          console.log('💓 Keep-alive ping sent');
+        } catch {
+          console.warn('⚠️ Keep-alive ping failed');
+        }
+      });
+    }
+
     app.listen(PORT, () => {
       console.log(`✨ Server is LIVE on port ${PORT}`);
       console.log(`👉 API Base: ${process.env.BASE_URL || 'http://localhost:' + PORT}`);
