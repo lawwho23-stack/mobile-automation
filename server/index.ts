@@ -288,36 +288,76 @@ async function executeFlow(flow: any, initialContext: any = {}) {
           }
 
           case 'action_sheets': {
-            const { sheetId, range, values, credentialId } = node.config;
+            const { sheetId, range, values, credentialId, operation = 'append', title, sheetName } = node.config;
             const resolvedValues = values ? resolveVariables(values, log.context).split(',').map((v: string) => v.trim()) : [];
-            
+
             if (credentialId) {
               const creds = await CredentialModel.all();
               const cred = (creds as any[]).find(c => c.id === credentialId);
               if (cred && cred.provider === 'google') {
-                const triggerOauth = new google.auth.OAuth2(
+                const sheetsOauth = new google.auth.OAuth2(
                   process.env.GOOGLE_CLIENT_ID,
                   process.env.GOOGLE_CLIENT_SECRET,
                   (process.env.BASE_URL || 'http://localhost:3001') + '/auth/google/callback'
                 );
-                triggerOauth.setCredentials(cred.meta);
-                
-                const sheets = google.sheets({ version: 'v4', auth: triggerOauth });
-                await sheets.spreadsheets.values.append({
-                  spreadsheetId: sheetId,
-                  range: range || 'Sheet1!A1',
-                  valueInputOption: 'USER_ENTERED',
-                  requestBody: { values: [resolvedValues] },
-                });
-                
-                log.context[node.id] = { success: true, appended: resolvedValues };
-                nodeLog.output = `အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ: ${resolvedValues.join(', ')}`;
+                sheetsOauth.setCredentials(cred.meta);
+                const sheets = google.sheets({ version: 'v4', auth: sheetsOauth });
+
+                if (operation === 'append') {
+                  await sheets.spreadsheets.values.append({
+                    spreadsheetId: sheetId,
+                    range: range || 'Sheet1!A1',
+                    valueInputOption: 'USER_ENTERED',
+                    requestBody: { values: [resolvedValues] },
+                  });
+                  log.context[node.id] = { success: true, operation: 'append', values: resolvedValues };
+                  nodeLog.output = `Appended: ${resolvedValues.join(', ')}`;
+
+                } else if (operation === 'get') {
+                  const res = await sheets.spreadsheets.values.get({
+                    spreadsheetId: sheetId,
+                    range: range || 'Sheet1!A1:Z100',
+                  });
+                  const rows = res.data.values || [];
+                  log.context[node.id] = { success: true, operation: 'get', rows, rowCount: rows.length };
+                  nodeLog.output = `Got ${rows.length} rows from ${range}`;
+
+                } else if (operation === 'update') {
+                  await sheets.spreadsheets.values.update({
+                    spreadsheetId: sheetId,
+                    range: range || 'Sheet1!A1',
+                    valueInputOption: 'USER_ENTERED',
+                    requestBody: { values: [resolvedValues] },
+                  });
+                  log.context[node.id] = { success: true, operation: 'update', values: resolvedValues };
+                  nodeLog.output = `Updated ${range}: ${resolvedValues.join(', ')}`;
+
+                } else if (operation === 'create') {
+                  const res = await sheets.spreadsheets.create({
+                    requestBody: {
+                      properties: { title: title || 'New Spreadsheet' },
+                      sheets: [{ properties: { title: sheetName || 'Sheet1' } }],
+                    },
+                  });
+                  const newId = res.data.spreadsheetId;
+                  log.context[node.id] = { success: true, operation: 'create', spreadsheetId: newId };
+                  nodeLog.output = `Created spreadsheet: ${title} (${newId})`;
+                }
               } else {
                 throw new Error("Google account မချိတ်ဆက်ထားပါ");
               }
             } else {
-              log.context[node.id] = { success: true, appended: resolvedValues };
-              nodeLog.output = `Simulation: Appended ${resolvedValues.join(', ')}`;
+              // Simulation mode
+              if (operation === 'get') {
+                log.context[node.id] = { success: true, operation: 'get', rows: [['Sample', 'Data']], rowCount: 1 };
+                nodeLog.output = `Simulation: Got 1 row`;
+              } else if (operation === 'create') {
+                log.context[node.id] = { success: true, operation: 'create', spreadsheetId: 'sim-id-123' };
+                nodeLog.output = `Simulation: Created spreadsheet "${title || 'New Spreadsheet'}"`;
+              } else {
+                log.context[node.id] = { success: true, operation, values: resolvedValues };
+                nodeLog.output = `Simulation: ${operation} — ${resolvedValues.join(', ')}`;
+              }
             }
             break;
           }

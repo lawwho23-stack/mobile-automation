@@ -74,15 +74,51 @@ function TriggerTelegramForm({ config, onChange, nodeId }: { config: any, onChan
   );
 }
 
+const SHEETS_OPERATIONS = [
+  { value: 'append', label: 'Append', icon: '➕', desc: 'Row အသစ်ထည့်မည်' },
+  { value: 'get',    label: 'Get',    icon: '📖', desc: 'Data ဖတ်မည်' },
+  { value: 'update', label: 'Update', icon: '✏️', desc: 'Row ပြင်မည်' },
+  { value: 'create', label: 'Create', icon: '🆕', desc: 'Sheet အသစ်ဖန်တီးမည်' },
+];
+
 function ActionSheetsForm({ config, onChange, credentials, nodeId }: { config: any, onChange: (c: any) => void, credentials: any[], nodeId: string }) {
+  const op = config.operation || 'append';
+
+  const inputCls = "w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50";
+  const labelCls = "text-sm font-medium text-slate-300";
+
   return (
     <div className="space-y-4">
+      {/* Operation selector */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">အသုံးပြုမည့် Google Account</label>
-        <select 
+        <label className={labelCls}>လုပ်ဆောင်ချက်</label>
+        <div className="grid grid-cols-4 gap-2">
+          {SHEETS_OPERATIONS.map(o => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => onChange({ ...config, operation: o.value })}
+              className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border text-xs font-medium transition-all ${
+                op === o.value
+                  ? 'bg-primary/20 border-primary text-primary'
+                  : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:border-slate-500'
+              }`}
+            >
+              <span className="text-base">{o.icon}</span>
+              <span>{o.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-slate-500 italic">{SHEETS_OPERATIONS.find(o => o.value === op)?.desc}</p>
+      </div>
+
+      {/* Google Account */}
+      <div className="space-y-1.5">
+        <label className={labelCls}>အသုံးပြုမည့် Google Account</label>
+        <select
           value={config.credentialId || ''}
-          onChange={(e) => onChange({...config, credentialId: e.target.value})}
-          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50"
+          onChange={(e) => onChange({ ...config, credentialId: e.target.value })}
+          className={inputCls}
         >
           <option value="">Simulation (စမ်းသပ်ရန်)</option>
           {credentials.filter(c => c.provider === 'google').map(c => (
@@ -90,28 +126,55 @@ function ActionSheetsForm({ config, onChange, credentials, nodeId }: { config: a
           ))}
         </select>
       </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">Spreadsheet ID</label>
-        <input 
-          type="text" 
-          value={config.sheetId || ''}
-          onChange={(e) => onChange({...config, sheetId: e.target.value})}
-          placeholder="1BxiMVs0XRY..."
-          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-300">ထည့်သွင်းမည့် အချက်အလက်များ (Values)</label>
-        <input 
-          type="text" 
-          value={config.values || ''}
-          onChange={(e) => onChange({...config, values: e.target.value})}
-          placeholder="ဥပမာ- {{telegram.text}}, {{agent.output}}"
-          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
-        <p className="text-[10px] text-slate-500 italic mt-1">ကော်မာ (,) ခြားပြီး ရေးပေးပါ။</p>
-      </div>
-      <VariablePicker currentNodeId={nodeId} onSelect={(v) => onChange({...config, values: (config.values || '') + (config.values ? ', ' : '') + v})} />
+
+      {/* Create: title + sheet name */}
+      {op === 'create' && (
+        <>
+          <div className="space-y-1.5">
+            <label className={labelCls}>Spreadsheet Title</label>
+            <input type="text" value={config.title || ''} onChange={(e) => onChange({ ...config, title: e.target.value })}
+              placeholder="My New Spreadsheet" className={inputCls} />
+          </div>
+          <div className="space-y-1.5">
+            <label className={labelCls}>Sheet Name (optional)</label>
+            <input type="text" value={config.sheetName || ''} onChange={(e) => onChange({ ...config, sheetName: e.target.value })}
+              placeholder="Sheet1" className={inputCls} />
+          </div>
+        </>
+      )}
+
+      {/* Get / Append / Update: spreadsheet ID */}
+      {op !== 'create' && (
+        <div className="space-y-1.5">
+          <label className={labelCls}>Spreadsheet ID</label>
+          <input type="text" value={config.sheetId || ''} onChange={(e) => onChange({ ...config, sheetId: e.target.value })}
+            placeholder="1BxiMVs0XRY..." className={inputCls} />
+        </div>
+      )}
+
+      {/* Get / Append / Update: range */}
+      {op !== 'create' && (
+        <div className="space-y-1.5">
+          <label className={labelCls}>Range</label>
+          <input type="text" value={config.range || ''} onChange={(e) => onChange({ ...config, range: e.target.value })}
+            placeholder={op === 'get' ? 'Sheet1!A1:D10' : 'Sheet1!A1'}
+            className={inputCls} />
+          <p className="text-[10px] text-slate-500 italic">
+            {op === 'get' ? 'ဖတ်ချင်သော range ထည့်ပါ' : 'ရေးမည့် cell range ထည့်ပါ'}
+          </p>
+        </div>
+      )}
+
+      {/* Append / Update: values */}
+      {(op === 'append' || op === 'update') && (
+        <div className="space-y-1.5">
+          <label className={labelCls}>ထည့်သွင်းမည့် အချက်အလက်များ (Values)</label>
+          <input type="text" value={config.values || ''} onChange={(e) => onChange({ ...config, values: e.target.value })}
+            placeholder="ဥပမာ- {{telegram.text}}, {{agent.output}}" className={inputCls} />
+          <p className="text-[10px] text-slate-500 italic">ကော်မာ (,) ခြားပြီး ရေးပေးပါ။</p>
+          <VariablePicker currentNodeId={nodeId} onSelect={(v) => onChange({ ...config, values: (config.values || '') + (config.values ? ', ' : '') + v })} />
+        </div>
+      )}
     </div>
   );
 }
